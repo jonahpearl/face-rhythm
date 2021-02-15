@@ -17,6 +17,8 @@ import sklearn.manifold
 from tqdm.notebook import tqdm
 from pynwb import NWBHDF5IO
 
+from pathlib import Path
+
 from face_rhythm.util import helpers
 
 
@@ -89,7 +91,6 @@ def plot_factors(config_filepath, factors_np):
     -------
 
     """
-
     factors_toUse = factors_np
     modelRank = factors_toUse[0].shape[1]
     ## just for plotting in case 
@@ -127,6 +128,7 @@ def plot_factors(config_filepath, factors_np):
     plt.figure()
     plt.imshow(np.single(np.corrcoef(factors_toUse[2][:,:].T)))
 
+    plt.show()
     # input_dimRed = factors_toUse[2][:,:]
     # # input_dimRed_meanSub = 
     # pca = sk.decomposition.PCA(n_components=modelRank-2)
@@ -155,7 +157,7 @@ def factor_videos(config_filepath, factors_np, positions_convDR_absolute):
     """
 
     config = helpers.load_config(config_filepath)
-    Fs = config['vid_Fs']
+    Fs = np.int64(config['vid_Fs'])
     vid_width = config['vid_width']
     vid_height = config['vid_height']
     numFrames_allFiles = config['numFrames_allFiles']
@@ -166,6 +168,10 @@ def factor_videos(config_filepath, factors_np, positions_convDR_absolute):
 
     factors_toShow = np.arange(factors_np[0].shape[1])  # zero-indexed
     # factors_toShow = [3]  # zero-indexed
+
+    plt.ion()
+    fig = plt.figure()
+    plt.show()
 
     for factor_iter in factors_toShow:
 
@@ -188,7 +194,7 @@ def factor_videos(config_filepath, factors_np, positions_convDR_absolute):
         save_dir = config['tca_vid_dir']
         save_fileName = f'factor {factor_toShow}'
         # save_pathFull = f'{save_dir}\\{save_fileName}.avi'
-        save_pathFull = f'{save_dir}/{save_fileName}.avi'
+        save_pathFull = str(Path(save_dir) / f'{save_fileName}.avi')
         config[f'path_{save_fileName}'] = save_pathFull
         helpers.save_config(config, config_filepath)
 
@@ -250,11 +256,14 @@ def factor_videos(config_filepath, factors_np, positions_convDR_absolute):
                 cv2.putText(new_frame, f'total frame #: {ind_concat+1}/{positions_toUse.shape[2]}', org=(10,60), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
                 cv2.putText(new_frame, f'fps: {np.uint32(fps)}', org=(10,80), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
                 cv2.putText(new_frame, f'factor num: {factor_iter+1} / {np.max(factors_toShow)+1}', org=(10,100), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
-                cv2.imshow('test',new_frame)
+                frame_viz = cv2.cvtColor(new_frame, cv2.COLOR_BGR2RGB)
 
-
-                k = cv2.waitKey(1) & 0xff
-                if k == 27 : break
+                if iter_frame == 0:
+                    im = plt.imshow(frame_viz)
+                else:
+                    im.set_data(frame_viz)
+                fig.canvas.draw()
+                fig.canvas.flush_events()
 
                 ind_concat = ind_concat+1
 
@@ -289,7 +298,7 @@ def plot_factors_full(config_filepath, factors_np, freqs_Sxx, Sxx_allPixels_norm
     """
 
     config = helpers.load_config(config_filepath)
-    Fs = config['vid_Fs']
+    Fs = int(config['vid_Fs'])
 
     factors_toUse = factors_np
     modelRank = factors_toUse[0].shape[1]
@@ -408,7 +417,7 @@ def more_factors_videos(config_filepath, factors_np, positions_convDR_absolute):
     """
 
     config = helpers.load_config(config_filepath)
-    Fs = config['vid_Fs']
+    Fs = int(config['vid_Fs'])
     vid_width = config['vid_width']
     vid_height = config['vid_height']
     numFrames_allFiles = config['numFrames_allFiles']
@@ -417,6 +426,9 @@ def more_factors_videos(config_filepath, factors_np, positions_convDR_absolute):
     # Display video of factors
     factors_toShow = np.arange(factors_np[0].shape[1])  # zero-indexed
     # factors_toShow = [3]  # zero-indexed
+
+    plt.ion()
+    fig = plt.figure()
 
     for factor_iter in factors_toShow:
 
@@ -441,7 +453,7 @@ def more_factors_videos(config_filepath, factors_np, positions_convDR_absolute):
         save_fileName = f'factor {factor_toShow}'
         # save_pathFull = f'{save_dir}\\{save_fileName}.avi'
         save_pathFull = f'{save_dir}/{save_fileName}.avi'
-        config[f'path_{save_fileName}'] = save_pathFull
+        config[f'path_{save_fileName}'] = str(save_pathFull)
         helpers.save_config(config, config_filepath)
 
         # ensemble_toUse = ensemble
@@ -505,11 +517,17 @@ def more_factors_videos(config_filepath, factors_np, positions_convDR_absolute):
                 cv2.putText(new_frame, f'total frame #: {ind_concat+1}/{positions_toUse.shape[2]}', org=(10,60), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
                 cv2.putText(new_frame, f'fps: {np.uint32(fps)}', org=(10,80), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
                 cv2.putText(new_frame, f'factor num: {factor_iter+1} / {np.max(factors_toShow)+1}', org=(10,100), fontFace=1, fontScale=1, color=(255,255,255), thickness=1)
-                cv2.imshow('test',new_frame)
+                frame_viz = cv2.cvtColor(new_frame, cv2.COLOR_BGR2RGB)
 
+                if iter_frame == 0:
+                    im = plt.imshow(frame_viz)
+                else:
+                    im.set_data(frame_viz)
+                fig.canvas.draw()
+                fig.canvas.flush_events()
 
-                k = cv2.waitKey(1) & 0xff
-                if k == 27 : break
+                # k = cv2.waitKey(1) & 0xff
+                # if k == 27 : break
 
                 ind_concat = ind_concat+1
 
@@ -590,9 +608,9 @@ def positional_tca_workflow(config_filepath, key_meansub, key_absolute):
     
     factors_np_positional = tca(config_filepath, positions_convDR_meanSub)
 
-    plot_factors(config_filepath, factors_np_positional)
     if config['tca_vid_display']:
         factor_videos(config_filepath, factors_np_positional, positions_convDR_absolute)
+    plot_factors(config_filepath, factors_np_positional)
 
     helpers.create_nwb_group(config_filepath, 'TCA')
     save_factors(config_filepath, factors_np_positional, 'positional')
@@ -627,12 +645,11 @@ def full_tca_workflow(config_filepath, data_key):
     factors_np = tca(config_filepath, Sxx_allPixels_norm[:,:,:,:])
     helpers.print_time('Decomposition completed', time.time() - tic)
 
-    factors_temporal = plot_factors_full(config_filepath, factors_np, freqs_Sxx, Sxx_allPixels_normFactor)
-    factors_xcorr = correlations(config_filepath, factors_np)
+    #factors_xcorr = correlations(config_filepath, factors_np)
 
     if config['tca_vid_display']:
         more_factors_videos(config_filepath, factors_np, positions_convDR_absolute)
-
+    factors_temporal = plot_factors_full(config_filepath, factors_np, freqs_Sxx, Sxx_allPixels_normFactor)
     factor_tsne(factors_temporal)
 
     save_factors(config_filepath, factors_np, 'frequential')

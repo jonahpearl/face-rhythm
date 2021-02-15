@@ -12,7 +12,7 @@ from functools import partial
 
 from tqdm.notebook import tqdm
 
-from time import sleep
+from matplotlib import pyplot as plt
 
 
 def setup(config, pts_all):
@@ -113,7 +113,7 @@ def visualize_progress(config, new_frame, pointInds_tracked, pointInds_tracked_t
                 fontScale=1, color=(255, 255, 255), thickness=1)
     cv2.putText(new_frame, f'fps: {np.uint32(fps)}', org=(10, 80), fontFace=1, fontScale=1, color=(255, 255, 255),
                 thickness=1)
-    cv2.imshow('test', new_frame)
+    return cv2.cvtColor(new_frame, cv2.COLOR_BGR2RGB)
 
 
 def displacements_monothread(config, pointInds_toUse, pointInds_tracked, pointInds_tracked_tuple, displacements,
@@ -157,6 +157,10 @@ def displacements_monothread(config, pointInds_toUse, pointInds_tracked, pointIn
     lk_params = {k.split('lk_')[1]: (tuple(config[k]) if type(config[k]) is list else config[k]) \
                  for k in lk_names}
 
+    if showVideo_pref:
+        plt.ion()
+        fig = plt.figure()
+
     for vidNum_iter in vidNums_toUse:
         vid = imageio.get_reader(path_vid_allFiles[vidNum_iter], 'ffmpeg')
         #     metadata = vid.get_meta_data()
@@ -196,9 +200,16 @@ def displacements_monothread(config, pointInds_toUse, pointInds_tracked, pointIn
                 pointInds_tracked = pointInds_tracked - (
                         pointInds_tracked - pointInds_toUse) * 0.01  # multiplied constant is the relaxation term
                 counters = [iter_frame, vidNum_iter, ind_concat, fps]
-                visualize_progress(config, new_frame, pointInds_tracked, pointInds_tracked_tuple, color_tuples, counters, numFrames_rough)
-                k = cv2.waitKey(1) & 0xff
-                if k == 27: break
+                frame_viz = visualize_progress(config, new_frame, pointInds_tracked, pointInds_tracked_tuple, color_tuples, counters, numFrames_rough)
+
+                if iter_frame == 0:
+                    im = plt.imshow(frame_viz)
+                else:
+                    im.set_data(frame_viz)
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+                #k = cv2.waitKey(1) & 0xff
+                #if k == 27: break
 
             ind_concat = ind_concat + 1
 

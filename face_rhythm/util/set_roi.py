@@ -11,7 +11,12 @@ from ipywidgets import widgets
 from pathlib import Path
 
 import h5py
+from roipoly import RoiPoly
+import logging
 
+logging.basicConfig(format='%(levelname)s ''%(processName)-10s : %(asctime)s '
+                           '%(module)s.%(funcName)s:%(lineno)s %(message)s',
+                    level=logging.INFO)
 
 
 RED = (0, 0, 255)
@@ -214,11 +219,20 @@ class BBoxSelect:
         self.fig.canvas.mpl_disconnect(self.ka)
 
 
-def test_inline_roi(config_filepath):
+def get_roi(config_filepath):
     config = helpers.load_config(config_filepath)
-    global frame
-    frame = load_video(config['vidToSet'],config['frameToSet'],config['path_vid_allFiles'])
-    bs = BBoxSelect(frame)
+    if config['load_from_file']:
+        with h5py.File(Path(config['path_data']) / 'pts_all.h5', 'r') as pt:
+            pts_all = helpers.h5_to_dict(pt)
+        helpers.save_h5(config_filepath, 'pts_all', pts_all)
+        return
+
+    config = helpers.load_config(config_filepath)
+    frame = load_video(config['vidToSet'], config['frameToSet'], config['path_vid_allFiles'])
+    return frame, BBoxSelect(frame)
+
+
+def process_roi(config_filepath, frame, bs):
     pts = bs.selected_points
     mask_frame = np.zeros((frame.shape[0], frame.shape[1]))
     pts_y, pts_x = skimage.draw.polygon(np.array(pts)[:, 1], np.array(pts)[:, 0])
@@ -236,4 +250,4 @@ def test_inline_roi(config_filepath):
         ('pts_y_displacement', pts_y_displacement),
         ('mask_frame_displacement', mask_frame_displacement)
     ])
-    helpers.save_data(config_filepath, 'pts_all', pts_all)
+    helpers.save_h5(config_filepath, 'pts_all', pts_all)
