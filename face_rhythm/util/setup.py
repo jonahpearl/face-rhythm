@@ -156,11 +156,13 @@ def import_videos(config_filepath):
         if video['file_prefix'] in str(vid.name):
             if vid.suffix in ['.avi', '.mp4','.mov','.MOV']:
                 session['videos'].append(str(vid))
-            elif vid.suffix in ['.npy'] and general['trials']:
-                session['trial_inds'] = str(vid)
-                trial_inds = np.load(session['trial_inds'])
-                session['num_trials'] = trial_inds.shape[0]
-                session['trial_len'] = trial_inds.shape[1]
+        elif vid.name in ['trial_indices.npy'] and general['trials']:
+            session['trial_inds'] = str(vid)
+            trial_inds = np.load(session['trial_inds'])
+            session['num_trials'] = trial_inds.shape[0]
+            session['trial_len'] = trial_inds.shape[1]
+        elif vid.name in ['frames_to_ignore.npy']:
+            session['frames_to_ignore'] = str(vid)
     general['sessions'].append(session)
     helpers.save_config(config, config_filepath)
 
@@ -237,7 +239,6 @@ def get_video_data(config_filepath):
     video = config['Video']
 
     for session in general['sessions']:
-        print(session)
         session['num_vids'] = len(session['videos'])
         vid_lens = np.ones(session['num_vids'])
         for i, vid_path in enumerate(session['videos']):

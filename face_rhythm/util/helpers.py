@@ -10,6 +10,7 @@ from hdmf.backends.hdf5.h5tools import H5DataIO
 import pynwb
 from pynwb.behavior import BehavioralTimeSeries
 
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 def load_config(config_filepath):
     """Loads config file into memory
@@ -29,16 +30,19 @@ def load_config(config_filepath):
 def save_config(config, config_filepath):
     """
     Dumps config file to yaml
-    
     Args:
         config (dict): config dict
         config_filepath (str): path to config file
-    
     Returns:
-    
     """
-    with open(config_filepath, 'w') as f:
-        yaml.safe_dump(config, f)
+    serialized_object_string = ''
+    try:
+        serialized_object_string = yaml.safe_dump(config)
+    except yaml.YAMLError as ex:
+        print("An error has occurred while trying to save FR config:\n", ex)
+    if serialized_object_string:
+        with open(config_filepath, 'w') as f:
+            f.write(serialized_object_string)
 
 
 def create_nwb_group(nwb_path, group_name):
@@ -267,13 +271,14 @@ def dump_nwb(nwb_path):
 
     Returns:
     """
-    io = pynwb.NWBHDF5IO(nwb_path, 'r')
-    nwbfile = io.read()
-    for interface in nwbfile.processing['Face Rhythm'].data_interfaces:
-        print(interface)
-        time_series_list = list(nwbfile.processing['Face Rhythm'][interface].time_series.keys())
-        for ii, time_series in enumerate(time_series_list):
-            print(f"     {time_series}:    {nwbfile.processing['Face Rhythm'][interface][time_series].data.shape}   ,  {nwbfile.processing['Face Rhythm'][interface][time_series].data.dtype}")
+    with pynwb.NWBHDF5IO(nwb_path, 'r') as io:
+        nwbfile = io.read()
+        for interface in nwbfile.processing['Face Rhythm'].data_interfaces:
+            print(interface)
+            time_series_list = list(nwbfile.processing['Face Rhythm'][interface].time_series.keys())
+            for ii, time_series in enumerate(time_series_list):
+                data_tmp = nwbfile.processing['Face Rhythm'][interface][time_series].data
+                print(f"     {time_series}:    {data_tmp.shape}   ,  {data_tmp.dtype}   ,   {round((data_tmp.size * data_tmp.dtype.itemsize)/1000000000, 6)} GB")
 
 
 def absolute_index(session, vid_num, iter_frame):
@@ -304,3 +309,48 @@ def update_config(new_project_path, config_name):
                 cat_dict[key] = value.replace(old_project_path, new_project_path)
     save_config(config, config_filepath)
     return config_filepath
+
+
+
+##### MULTICORE HELPERS #####
+def multithreading(func, args, workers):
+    with ThreadPoolExecutor(workers) as ex:
+        res = ex.map(func, args)
+    return list(res)
+def multiprocessing(func, args, workers):
+    with ProcessPoolExecutor(workers) as ex:
+        res = ex.map(func, args)
+    return list(res)
+#############################
+
+def estimate_size_of_float_array(numel=None, input_shape=None, bitsize=64):
+    '''
+    Estimates the size of a hypothetical array based on shape or number of 
+    elements and the bitsize
+
+    Args:
+        numel (int): 
+            number of elements in the array. If None, then 'input_shape'
+            is used instead
+        input_shape (tuple of ints):
+            shape of array. Output of array.shape . Used if numel is None
+        bitsize (int):
+            bit size / width of the hypothetical data. eg:
+                'float64'=64
+                'float32'=32
+                'uint8'=8
+    
+    Returns:
+        size_estimate_in_bytes (int):
+            size, in bytes, of hypothetical array. Doesn't include metadata,
+            but for numpy arrays, this is usually very small (~128 bytes)
+
+    '''
+
+    if numel is None:
+        numel = np.product(input_shape)
+    
+    bytes_per_element = bitsize/8
+    
+    size_estimate_in_bytes = numel * bytes_per_element
+    return size_estimate_in_bytes

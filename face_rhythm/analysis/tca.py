@@ -264,7 +264,7 @@ def interpolate_temporal_factor(y_input , numFrames):
     return y_new
 
 
-def full_tca_workflow(config_filepath, data_key):
+def full_tca_workflow(config_filepath, data_key_positionsTraceForInterpolation='positions_cleanup'):
     """
     sequences the steps for tca of the spectral decomposition of the optic flow data
 
@@ -283,7 +283,7 @@ def full_tca_workflow(config_filepath, data_key):
     general = config['General']
 
     for session in general['sessions']:
-        positions_toUse = helpers.load_nwb_ts(session['nwb'],'Optic Flow', data_key)
+        positions_toUse = helpers.load_nwb_ts(session['nwb'],'Optic Flow', data_key_positionsTraceForInterpolation)
         Sxx_allPixels_norm = helpers.load_nwb_ts(session['nwb'], 'CQT','Sxx_allPixels_norm')
         if general['trials']:
             trial_inds = np.load(session['trial_inds'])
